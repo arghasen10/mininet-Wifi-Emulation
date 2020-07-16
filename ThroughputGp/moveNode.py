@@ -10,7 +10,7 @@ def topology():
 
     info('**Creating Nodes**\n')
     h1 = net.addHost('h1', mac='00:00:00:00:00:01', ip='10.0.0.1/8')
-    sta1 = net.addStation('sta1', mac='00:00:00:00:00:02', ip='10.0.0.2/8', range=20)
+    sta1 = net.addStation('sta1', mac='00:00:00:00:00:02', ip='10.0.0.2/8', range=30)
     ap1 = net.addAccessPoint('ap1', ssid='api-ssid', mode='g', channel='1', position='80,40,0', range=30)
     c1 = net.addController('c1')
     net.setPropagationModel(model="logDistance", exp=4.5)
@@ -24,9 +24,9 @@ def topology():
     net.plotGraph(max_x=180, max_y=180)
 
     net.startMobility(time=0)
-    net.mobility(sta1, 'start', time=60, position='20,50,0')
-    net.mobility(sta1,'stop', time=119, position='140,50,0')
-    net.stopMobility(time=120)
+    net.mobility(sta1, 'start', time=100, position='60,41,0')
+    net.mobility(sta1,'stop', time=199, position='100,41,0')
+    net.stopMobility(time=200)
 
     info('**Starting Network\n')
     net.build()
