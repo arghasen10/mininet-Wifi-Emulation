@@ -8,6 +8,7 @@ import csv
 throughput_list = []
 distance_list = []
 
+
 def topology():
     net = Mininet_wifi()
 
@@ -28,7 +29,7 @@ def topology():
     startime = time.time()
     net.startMobility(time=0)
     net.mobility(sta1, 'start', time=100, position='60,41,0')
-    net.mobility(sta1,'stop', time=199, position='100,41,0')
+    net.mobility(sta1, 'stop', time=199, position='100,41,0')
     net.stopMobility(time=200)
 
     info('**Starting Network\n')
@@ -37,7 +38,6 @@ def topology():
     ap1.start([c1])
 
     time.sleep(3)
-    iwconf = sta1.cmd('iwconfig')
     info('Starting iperf host server at 10.0.0.1\n')
     h1.cmd('iperf -s -p 5566 -i 1 &')
     time.sleep(2)
@@ -75,7 +75,6 @@ def topology():
 
     info('**Stopping network\n')
     net.stop()
-
 
 
 if __name__ == '__main__':
