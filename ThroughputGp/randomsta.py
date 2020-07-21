@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import random
+import random, time
 from mn_wifi.net import Mininet_wifi
 from mininet.log import info, setLogLevel
 from mn_wifi.cli import CLI
@@ -40,12 +40,20 @@ def topology():
     ap3.start([c1])
     ap4.start([c1])
 
+    time.sleep(5)
+
+    for i in range(10):
+        time.sleep(1)
+        res = nodes['sta%s' % (i+1)].cmd('iw dev sta%s-wlan0 link' % (i+1))
+        print()
+        if res.splitlines()[0].split(' ')[0]:
+            print(res.splitlines()[0].split(' ')[2].split(':')[-2])
+
     CLI(net)
-    
-    info('**Stopping network\n')
+    info('stopping network\n')
     net.stop()
-    
-    
+
+
 if __name__ == '__main__':
     setLogLevel('info')
     topology()
