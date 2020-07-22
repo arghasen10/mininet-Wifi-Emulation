@@ -103,18 +103,18 @@ def topology():
     info('*** Post configure nodes\n')
     time.sleep(5)
     filename = []
+    info('*** Creating files for data storage\n')
     for i in range(7):
         file = createfile('sta%s' % (i+1))
         filename.append(file)
     info('Starting iperf server\n')
-    h1.cmd('iperf -s -p 5566 -i 1 -t 200 &')
+    h1.cmd('iperf -s -p 5566 -i 1 -t 600 &')
     startime = time.time()
     currenttime = time.time()
     difftime = currenttime - startime
     info('collecting data\n')
-    while difftime < 80:
+    while difftime < 500:
         for i in range(7):
-            print('Inside loop')
             name = 'sta%s' % (i+1)
             associated_to = nodes[name].cmd('iw dev sta%s-wlan0 link' % (i+1))
             associated_to = str(associated_to).splitlines()
@@ -133,7 +133,8 @@ def topology():
             distance_ap = nodes['sta%s' % (i+1)].get_distance_to(net.get(ap_name))
             currenttime = time.time()
             difftime = currenttime - startime
-            data_list = [name, ap_name, thpt, distance_ap, difftime]
+            difftimeval = "{:.2f}".format(difftime)
+            data_list = [name, ap_name, thpt, distance_ap, difftimeval]
             print(data_list)
             with open(filename[i], 'a') as csv_file:
                 csv_writer = csv.writer(csv_file)
