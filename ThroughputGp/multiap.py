@@ -30,7 +30,7 @@ def createfile(name_sta):
     filename += '.csv'
 
     print('Name of File created :', filename)
-    header_name = ["staName", "APName", "thpt","dist"]
+    header_name = ["staName", "APName", "thpt", "dist", "time"]
     with open(filename, 'w+') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(header_name)
@@ -105,16 +105,40 @@ def topology():
     filename = []
     for i in range(7):
         file = createfile('sta%s' % (i+1))
-        filename[i] = file
-
-    h1.cmd('iperf -s -p 5566 -i 1 -t 200')
+        filename.append(file)
+    info('Starting iperf server\n')
+    h1.cmd('iperf -s -p 5566 -i 1 -t 200 &')
     startime = time.time()
     currenttime = time.time()
     difftime = currenttime - startime
+    info('collecting data\n')
+    while difftime < 80:
+        for i in range(7):
+            print('Inside loop')
+            name = 'sta%s' % (i+1)
+            associated_to = nodes[name].cmd('iw dev sta%s-wlan0 link' % (i+1))
+            associated_to = str(associated_to).splitlines()
+            status = associated_to[0].split(' ')[0]
+            if status == 'Not':
+                print('sta%s is not connected' % (i+1))
+                continue
+            ap = associated_to[1].strip().split(':')[1].split('-')[0][-1]
+            ap_name = 'ap%s' % ap
+            clientdata = nodes[name].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
+            print(clientdata)
+            thpt = clientdata.splitlines()[-1].split(' ')[-2]
+            if thpt == 'to' or thpt == 'in':
+                print('Connection to iperf server lost')
+                continue
+            distance_ap = nodes['sta%s' % (i+1)].get_distance_to(net.get(ap_name))
+            currenttime = time.time()
+            difftime = currenttime - startime
+            data_list = [name, ap_name, thpt, distance_ap, difftime]
+            print(data_list)
+            with open(filename[i], 'a') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(data_list)
 
-    # while difftime<80:
-    #     for i in range(7):
-    #         clientdata = nodes
     CLI(net)
     net.stop()
 
