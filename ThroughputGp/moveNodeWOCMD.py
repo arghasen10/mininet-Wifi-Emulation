@@ -15,9 +15,9 @@ def topology():
     info('**Creating Nodes**\n')
     h1 = net.addHost('h1', mac='00:00:00:00:00:01', ip='10.0.0.1/8')
     sta1 = net.addStation('sta1', mac='00:00:00:00:00:02', ip='10.0.0.2/8', range=30)
-    ap1 = net.addAccessPoint('ap1', ssid='api-ssid', mode='g', channel='1', position='80,40,0', range=30)
+    ap1 = net.addAccessPoint('ap1', ssid='api-ssid', mode='n', channel='1', position='80,40,0', range=30)
     c1 = net.addController('c1')
-    net.setPropagationModel(model="logDistance", exp=4.5)
+    net.setPropagationModel(model="logNormalShadowingPropagationLossModel", exp=4.5, variance=1)
     info('*** Configuring Wifi Nodes\n')
     net.configureWifiNodes()
 
@@ -64,7 +64,7 @@ def topology():
             break
         throughput = float(throughput)
         print('Throughput Value', throughput)
-
+        distance = sta1.get_distance_to(ap1)
         print('Distance', distance)
         throughput_list.append(throughput)
         distance_list.append(distance)
