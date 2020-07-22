@@ -17,7 +17,7 @@ def topology():
     sta1 = net.addStation('sta1', mac='00:00:00:00:00:02', ip='10.0.0.2/8', range=30)
     ap1 = net.addAccessPoint('ap1', ssid='api-ssid', mode='n', channel='1', position='80,40,0', range=30)
     c1 = net.addController('c1')
-    net.setPropagationModel(model="logNormalShadowingPropagationLossModel", exp=4.5, variance=1)
+    net.setPropagationModel(model="logNormalShadowingPropagationLossModel", exp=4.5, variance=10)
     info('*** Configuring Wifi Nodes\n')
     net.configureWifiNodes()
 
