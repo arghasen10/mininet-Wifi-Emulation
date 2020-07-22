@@ -4,11 +4,10 @@ import time, datetime, csv
 from mininet.node import Controller, OVSKernelSwitch, Host
 from mininet.log import setLogLevel, info
 from mn_wifi.net import Mininet_wifi
-from mn_wifi.node import Station, OVSKernelAP
+from mn_wifi.node import OVSKernelAP
 from mn_wifi.cli import CLI
 from mn_wifi.link import wmediumd
 from mn_wifi.wmediumdConnector import interference
-from subprocess import call
 
 
 def createfile(name_sta):
@@ -30,7 +29,7 @@ def createfile(name_sta):
     filename += '.csv'
 
     print('Name of File created :', filename)
-    header_name = ["staName", "APName", "thpt", "dist", "time"]
+    header_name = ["staName", "APName", "thpt", "dist", "time", "handover"]
     with open(filename, 'w+') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow(header_name)
@@ -109,10 +108,13 @@ def topology():
         filename.append(file)
     info('Starting iperf server\n')
     h1.cmd('iperf -s -p 5566 -i 1 -t 600 &')
+
+    info('collecting data\n')
     startime = time.time()
     currenttime = time.time()
     difftime = currenttime - startime
-    info('collecting data\n')
+    connected_ap = [1, 2, 3, 0, 1, 2, 0]
+
     while difftime < 500:
         for i in range(7):
             name = 'sta%s' % (i+1)
@@ -122,19 +124,33 @@ def topology():
             if status == 'Not':
                 print('sta%s is not connected' % (i+1))
                 continue
-            ap = associated_to[1].strip().split(':')[1].split('-')[0][-1]
-            ap_name = 'ap%s' % ap
+
             clientdata = nodes[name].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
             print(clientdata)
             thpt = clientdata.splitlines()[-1].split(' ')[-2]
             if thpt == 'to' or thpt == 'in':
                 print('Connection to iperf server lost')
                 continue
-            distance_ap = nodes['sta%s' % (i+1)].get_distance_to(net.get(ap_name))
+
+            dist1 = nodes[name].get_distance_to(ap1)
+            dist2 = nodes[name].get_distance_to(ap2)
+            dist3 = nodes[name].get_distance_to(ap3)
+            dist4 = nodes[name].get_distance_to(ap4)
+            distance = [dist1, dist2, dist3, dist4]
+            short_index = distance.index(min(distance))
+            handover = 0
+            distance_ap = distance[connected_ap[i]]
+            if (connected_ap[i] != short_index) and (distance_ap > 42):
+                connected_ap[i] = short_index
+                distance_ap = distance[connected_ap[i]]
+                print('Handover happened at sta%s' % (i+1))
+                handover = 1
+
+            ap_name = 'ap%s' % (connected_ap[i]+1)
             currenttime = time.time()
             difftime = currenttime - startime
             difftimeval = "{:.2f}".format(difftime)
-            data_list = [name, ap_name, thpt, distance_ap, difftimeval]
+            data_list = [name, ap_name, thpt, distance_ap, difftimeval, handover]
             print(data_list)
             with open(filename[i], 'a') as csv_file:
                 csv_writer = csv.writer(csv_file)
