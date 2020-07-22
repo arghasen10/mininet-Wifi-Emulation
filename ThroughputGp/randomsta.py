@@ -22,7 +22,7 @@ def topology():
     ap3 = net.addAccessPoint('ap3', ssid='ap-ssid', mode='n', channel='1', position='80.0,20.0,0.0', range=42)
     ap4 = net.addAccessPoint('ap4', ssid='ap-ssid', mode='n', channel='6', position='20.0,20.0,0.0', range=42)
     c1 = net.addController('c1')
-    net.setPropagationModel(model='logNormalShadowingPropagationLossModel', exp=3.5, variance=10)
+    net.setPropagationModel(model='logNormalShadowingPropagationLossModel', exp=4.5, variance=10)
     info('Configuring Nodes\n')
     net.configureWifiNodes()
 
@@ -66,7 +66,6 @@ def topology():
         if len(apnodes[key]) == 2:
             nodes['sta%s' % apnodes[key][0]].cmd('iperf -s -p 5566 -i 1 -t 100 &')
             time.sleep(2)
-            time.sleep(1)
             startime = time.time()
             currenttime = time.time()
             difftime = currenttime - startime
@@ -77,6 +76,8 @@ def topology():
                 clientdata = nodes[name].cmd('iperf -c 10.0.0.%s -p 5566 -i 1 -t 1' % (apnodes[key][0] + 1))
                 print(clientdata)
                 thpt = clientdata.splitlines()[-1].split(' ')[-2]
+                if thpt == 'to' or thpt == 'in':
+                    continue
                 dist1 = nodes[name].get_distance_to(ap1)
                 dist2 = nodes[name].get_distance_to(ap2)
                 dist3 = nodes[name].get_distance_to(ap3)
