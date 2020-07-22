@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import time, datetime, csv
 from mininet.node import Controller, OVSKernelSwitch, Host
 from mininet.log import setLogLevel, info
 from mn_wifi.net import Mininet_wifi
@@ -10,7 +11,34 @@ from mn_wifi.wmediumdConnector import interference
 from subprocess import call
 
 
-def myNetwork():
+def createfile(name_sta):
+    datetimenow = str(datetime.datetime.now()).split(' ')
+    datenow = datetimenow[0]
+    mode = datetimenow[1][:8].split(':')
+    s1 = int(mode[0])
+    s2 = int(mode[1])
+    s3 = int(mode[2])
+    s1 = s1 * 10000 + s2 * 100 + s3
+    timenow = s1
+    mode = datenow.split('-')
+    s1 = int(mode[0])
+    s2 = int(mode[1])
+    s3 = int(mode[2])
+    s1 = s1 * 10000 + s2 * 100 + s3
+    datenow = s1
+    filename = 'output' + str(timenow) + '_' + str(datenow) + name_sta
+    filename += '.csv'
+
+    print('Name of File created :', filename)
+    header_name = ["staName", "APName", "thpt","dist"]
+    with open(filename, 'w+') as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(header_name)
+
+    return filename
+
+
+def topology():
 
     net = Mininet_wifi(topo=None,
                        build=False,
@@ -73,12 +101,25 @@ def myNetwork():
     net.get('ap4').start([])
 
     info('*** Post configure nodes\n')
+    time.sleep(5)
+    filename = []
+    for i in range(7):
+        file = createfile('sta%s' % (i+1))
+        filename[i] = file
 
+    h1.cmd('iperf -s -p 5566 -i 1 -t 200')
+    startime = time.time()
+    currenttime = time.time()
+    difftime = currenttime - startime
+
+    # while difftime<80:
+    #     for i in range(7):
+    #         clientdata = nodes
     CLI(net)
     net.stop()
 
 
 if __name__ == '__main__':
     setLogLevel('info')
-    myNetwork()
+    topology()
 
