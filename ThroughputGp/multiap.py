@@ -8,6 +8,7 @@ from mn_wifi.node import OVSKernelAP
 from mn_wifi.cli import CLI
 from mn_wifi.link import wmediumd
 from mn_wifi.wmediumdConnector import interference
+from matplotlib import pyplot as plt
 
 
 def createfile(name_sta):
@@ -37,6 +38,45 @@ def createfile(name_sta):
     return filename
 
 
+def plot_graph(filename):
+    aps, throughput, distance, times, handovers = ([] for i in range(5))
+    flag=0
+    for i in range(7):
+        ap, thpt, dist, time, handover = ([] for i in range(5))
+        with open(filename[i], 'r') as csvfile:
+            rows = csv.reader(csvfile)
+            for row in rows:
+                ap.append(row[1])
+                thpt.append(row[2])
+                dist.append(row[3])
+                time.append(row[4])
+                handover.append(row[-1])
+        aps.append(ap[1:])
+        thpt = [float(item) for item in thpt[1:]]
+        dist = [float(item) for item in dist[1:]]
+        time = [float(item) for item in time[1:]]
+        handover = handover[1:]
+        throughput.append(thpt)
+        distance.append(dist)
+        times.append(time)
+        handovers.append(handover)
+        plt.plot(times[i], throughput[i], label='sta%s' % (i+1))
+        plt.ylabel('Throughput(Mbps)')
+        plt.xlabel('time(sec)')
+        plt.title('Throughput vs time')
+        plt.legend(loc='best')
+        for j, ho in enumerate(handovers[i]):
+            if ho == '1':
+                if j == 0:
+                    continue
+                if flag == 0:
+                    plt.plot(times[i][j], throughput[i][j], 'ro', label='Handover')
+                    flag = 1
+                plt.plot(times[i][j], throughput[i][j], 'ro')
+
+    plt.show()
+
+
 def topology():
 
     net = Mininet_wifi(topo=None,
@@ -53,13 +93,13 @@ def topology():
 
     info('*** Add switches/APs\n')
     s1 = net.addSwitch('s1', cls=OVSKernelSwitch)
-    ap1 = net.addAccessPoint('ap1', cls=OVSKernelAP, ssid='ap1-ssid',
+    ap1 = net.addAccessPoint('ap1', cls=OVSKernelAP, ssid='ap-ssid',
                              channel='1', mode='n', failMode='standalone', position='20.0,80.0,0.0', range=42)
-    ap2 = net.addAccessPoint('ap2', cls=OVSKernelAP, ssid='ap2-ssid',
+    ap2 = net.addAccessPoint('ap2', cls=OVSKernelAP, ssid='ap-ssid',
                              channel='6', mode='n', failMode='standalone', position='80.0,80.0,0.0', range=42)
-    ap3 = net.addAccessPoint('ap3', cls=OVSKernelAP, ssid='ap3-ssid',
+    ap3 = net.addAccessPoint('ap3', cls=OVSKernelAP, ssid='ap-ssid',
                              channel='1', mode='n', failMode='standalone', position='80.0,20.0,0.0', range=42)
-    ap4 = net.addAccessPoint('ap4', cls=OVSKernelAP, ssid='ap4-ssid',
+    ap4 = net.addAccessPoint('ap4', cls=OVSKernelAP, ssid='ap-ssid',
                              channel='6', mode='n', failMode='standalone', position='20.0,20.0,0.0', range=42)
 
     info('*** Add hosts/stations\n')
@@ -128,10 +168,12 @@ def topology():
             clientdata = nodes[name].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
             print(clientdata)
             thpt = clientdata.splitlines()[-1].split(' ')[-2]
+
             if thpt == 'to' or thpt == 'in':
                 print('Connection to iperf server lost')
                 continue
-
+            if clientdata.splitlines()[-1].split(' ')[-1] == 'Kbits/sec':
+                thpt = str(float(thpt)/1000)
             dist1 = nodes[name].get_distance_to(ap1)
             dist2 = nodes[name].get_distance_to(ap2)
             dist3 = nodes[name].get_distance_to(ap3)
@@ -155,6 +197,9 @@ def topology():
             with open(filename[i], 'a') as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow(data_list)
+    #TODO
+    # info('*** Plotting Graphs\n')
+    # plot_graph(filename)
 
     CLI(net)
     net.stop()

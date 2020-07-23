@@ -42,13 +42,13 @@ def plot_graph(filename):
 
 
 if __name__ == '__main__':
-    file1 = "output34622_20200723sta1.csv"
-    file2 = "output34622_20200723sta2.csv"
-    file3 = "output34622_20200723sta3.csv"
-    file4 = "output34622_20200723sta4.csv"
-    file5 = "output34622_20200723sta5.csv"
-    file6 = "output34622_20200723sta6.csv"
-    file7 = "output34622_20200723sta7.csv"
+    file1 = "output90654_20200723sta1.csv"
+    file2 = "output90654_20200723sta2.csv"
+    file3 = "output90654_20200723sta3.csv"
+    file4 = "output90654_20200723sta4.csv"
+    file5 = "output90654_20200723sta5.csv"
+    file6 = "output90654_20200723sta6.csv"
+    file7 = "output90654_20200723sta7.csv"
     filename = [file1, file2, file3, file4, file5, file6, file7]
     plot_graph(filename)
 
