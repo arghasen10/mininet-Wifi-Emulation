@@ -11,6 +11,7 @@ from mn_wifi.wmediumdConnector import interference
 from matplotlib import pyplot as plt
 from mininet.term import runX11
 
+
 def createfile(name_sta):
     datetimenow = str(datetime.datetime.now()).split(' ')
     datenow = datetimenow[0]
@@ -40,7 +41,7 @@ def createfile(name_sta):
 
 def plot_graph(filename):
     aps, throughput, distance, times, handovers = ([] for i in range(5))
-    flag=0
+    flag = 0
     for i in range(7):
         ap, thpt, dist, time, handover = ([] for i in range(5))
         with open(filename[i], 'r') as csvfile:
@@ -60,7 +61,7 @@ def plot_graph(filename):
         distance.append(dist)
         times.append(time)
         handovers.append(handover)
-        plt.plot(times[i], throughput[i], label='sta%s' % (i+1))
+        plt.plot(times[i], throughput[i], label='sta%s' % (i + 1))
         plt.ylabel('Throughput(Mbps)')
         plt.xlabel('time(sec)')
         plt.title('Throughput vs time')
@@ -78,7 +79,6 @@ def plot_graph(filename):
 
 
 def topology():
-
     net = Mininet_wifi(topo=None,
                        build=False,
                        link=wmediumd,
@@ -105,9 +105,9 @@ def topology():
     info('*** Add hosts/stations\n')
     nodes = {}
     for i in range(7):
-        nodes['sta%s' % (i+1)] = net.addStation('sta%s' % (i+1),
-                                                ip='10.0.0.%s/8' % (i+2), min_x=25, max_x=75, min_y=25, max_y=75,
-                                                min_v=1, max_v=1.5)
+        nodes['sta%s' % (i + 1)] = net.addStation('sta%s' % (i + 1),
+                                                  ip='10.0.0.%s/8' % (i + 2), min_x=25, max_x=75, min_y=25, max_y=75,
+                                                  min_v=1, max_v=1.5)
     h1 = net.addHost('h1', cls=Host, ip='10.0.0.1', defaultRoute=None)
 
     info("*** Configuring Propagation Model\n")
@@ -141,7 +141,6 @@ def topology():
 
     info('*** Post configure nodes\n')
     time.sleep(5)
-
     val = input('Data Collection: ')
     if val == 'yes':
         filename = []
@@ -204,8 +203,21 @@ def topology():
         # info('*** Plotting Graphs\n')
         # plot_graph(filename)
     else:
+        time.sleep(2)
+        ap_mac = [ap1.cmd('ifconfig ap1-wlan1 | grep ether').splitlines()[-1].split()[1].upper(),
+                  ap2.cmd('ifconfig ap2-wlan1 | grep ether').splitlines()[-1].split()[1].upper(),
+                  ap3.cmd('ifconfig ap3-wlan1 | grep ether').splitlines()[-1].split()[1].upper(),
+                  ap4.cmd('ifconfig ap4-wlan1 | grep ether').splitlines()[-1].split()[1].upper()]
+        time.sleep(3)
         runX11(h1, 'python server.py')
+        print('ap_mac', ap_mac)
         nodes['sta1'].cmd('./client.sh &')
+        time.sleep(1)
+        print('http MCS: ', nodes['sta1'].cmd('iw dev sta1-wlan0 station '
+                                              'dump | grep MCS').splitlines()[-1].split(' ')[-1])
+        print('SINR: ', nodes['sta1'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1])
+        print('sta1 is connected to', ap_mac.index(nodes['sta1'].cmd('iwconfig | '
+                                                                     'grep Access').splitlines()[-1].split()[-1]) + 1)
 
     CLI(net)
     net.stop()
@@ -214,4 +226,3 @@ def topology():
 if __name__ == '__main__':
     setLogLevel('info')
     topology()
-
