@@ -1,5 +1,6 @@
 #!/bin/bash
 
+xhost +
 sudo -u foo -i <<EOF
 unset http_proxy
 unset https_proxy
