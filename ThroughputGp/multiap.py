@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from mininet.term import runX11
 
 
-def createfile(name_sta):
+def createfile():
     datetimenow = str(datetime.datetime.now()).split(' ')
     datenow = datetimenow[0]
     mode = datetimenow[1][:8].split(':')
@@ -27,15 +27,10 @@ def createfile(name_sta):
     s3 = int(mode[2])
     s1 = s1 * 10000 + s2 * 100 + s3
     datenow = s1
-    filename = 'output' + str(timenow) + '_' + str(datenow) + name_sta
+    filename = 'output' + str(timenow) + '_' + str(datenow)
     filename += '.csv'
 
     print('Name of File created :', filename)
-    header_name = ["staName", "APName", "thpt", "dist", "time", "handover"]
-    with open(filename, 'w+') as csv_file:
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerow(header_name)
-
     return filename
 
 
@@ -146,7 +141,14 @@ def topology():
         filename = []
         info('*** Creating files for data storage\n')
         for i in range(7):
-            file = createfile('sta%s' % (i + 1))
+            file = createfile()
+            file -= '.csv'
+            file += 'sta %s' % (i + 1) + '.csv'
+            header_name = ["staName", "APName", "thpt", "dist", "time", "handover"]
+            with open(file, 'w+') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(header_name)
+
             filename.append(file)
         info('Starting iperf server\n')
         h1.cmd('iperf -s -p 5566 -i 1 -t 600 &')
@@ -213,12 +215,65 @@ def topology():
         print('ap_mac', ap_mac)
         nodes['sta1'].cmd('./client.sh &')
         time.sleep(1)
-        print('http MCS: ', nodes['sta1'].cmd('iw dev sta1-wlan0 station '
-                                              'dump | grep MCS').splitlines()[-1].split(' ')[-1])
+        try:
+            mcs = nodes['sta1'].cmd('iw dev sta1-wlan0 station dump | grep MCS').splitlines()[-1].split(' ')[-1]
+            print('MCS: ', mcs)
+        except IndexError:
+            print('MCS not found')
         print('SINR: ', nodes['sta1'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1])
         print('sta1 is connected to', ap_mac.index(nodes['sta1'].cmd('iwconfig | '
                                                                      'grep Access').splitlines()[-1].split()[-1]) + 1)
+        time.sleep(4)
+        info('*** Starting iperf server and client')
+        filename = createfile()
+        header = ["thpt", "ap_name", "nosta", "mcs", "sinrval", "time"]
+        with open(filename, 'w+') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(header)
 
+        h1.cmd('iperf -s -p 5566 -i 1 -t 600 &')
+        startime = time.time()
+        currenttime = time.time()
+        difftime = currenttime - startime
+        while difftime < 500:
+            associated_to = nodes['sta1'].cmd('iw dev sta1-wlan0 link')
+            associated_to = str(associated_to).splitlines()
+            status = associated_to[0].split(' ')[0]
+            if status == 'Not':
+                print('sta1 is not connected')
+                continue
+
+            clientdata = nodes['sta1'].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
+            print(clientdata)
+            thpt = clientdata.splitlines()[-1].split(' ')[-2]
+
+            if thpt == 'to' or thpt == 'in':
+                print('Connection to iperf server lost')
+                continue
+            if clientdata.splitlines()[-1].split(' ')[-1] == 'Kbits/sec':
+                thpt = str(float(thpt) / 1000)
+            mcs = nodes['sta1'].cmd('iw dev sta1-wlan0 station dump | grep MCS').splitlines()[-1].split(' ')[-1]
+            currenttime = time.time()
+            difftime = currenttime - startime
+            difftimeval = "{:.2f}".format(difftime)
+            mac_ap = nodes['sta1'].cmd('iwconfig | grep Access').splitlines()[-1].split()[-1]
+            if mac_ap == 'dBm':
+                continue
+            ap_name = ap_mac.index(mac_ap) + 1
+            nosta = 1
+            sinrval = nodes['sta1'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1]
+            for i in range(1, 7):
+                name = 'sta%s' % (i+1)
+                mac_ap = nodes[name].cmd('iwconfig | grep Access').splitlines()[-1].split()[-1]
+                if mac_ap == 'dBm':
+                    continue
+                if ap_mac.index(mac_ap) == ap_name:
+                    nosta += 1
+            data_list = [thpt, ap_name, nosta, mcs, sinrval, difftimeval]
+            print(data_list)
+            with open(filename, 'a') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(data_list)
     CLI(net)
     net.stop()
 
