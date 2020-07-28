@@ -210,20 +210,20 @@ def topology():
                   ap2.cmd('ifconfig ap2-wlan1 | grep ether').splitlines()[-1].split()[1].upper(),
                   ap3.cmd('ifconfig ap3-wlan1 | grep ether').splitlines()[-1].split()[1].upper(),
                   ap4.cmd('ifconfig ap4-wlan1 | grep ether').splitlines()[-1].split()[1].upper()]
-        time.sleep(3)
-        runX11(h1, 'python server.py')
-        print('ap_mac', ap_mac)
-        nodes['sta1'].cmd('./client.sh &')
-        time.sleep(1)
-        try:
-            mcs = nodes['sta1'].cmd('iw dev sta1-wlan0 station dump | grep MCS').splitlines()[-1].split(' ')[-1]
-            print('MCS: ', mcs)
-        except IndexError:
-            print('MCS not found')
-        print('SINR: ', nodes['sta1'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1])
-        print('sta1 is connected to', ap_mac.index(nodes['sta1'].cmd('iwconfig | '
-                                                                     'grep Access').splitlines()[-1].split()[-1]) + 1)
-        time.sleep(4)
+        # time.sleep(3)
+        # runX11(h1, 'python server.py')
+        # print('ap_mac', ap_mac)
+        # nodes['sta1'].cmd('./client.sh &')
+        # time.sleep(1)
+        # try:
+        #     mcs = nodes['sta1'].cmd('iw dev sta1-wlan0 station dump | grep MCS').splitlines()[-1].split(' ')[-1]
+        #     print('MCS: ', mcs)
+        # except IndexError:
+        #     print('MCS not found')
+        # print('SINR: ', nodes['sta1'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1])
+        # print('sta1 is connected to', ap_mac.index(nodes['sta1'].cmd('iwconfig | '
+        #                                                              'grep Access').splitlines()[-1].split()[-1]) + 1)
+        # time.sleep(4)
         info('*** Starting iperf server and client')
         filename = createfile()
         header = ["thpt", "ap_name", "nosta", "mcs", "sinrval", "time"]
@@ -236,38 +236,43 @@ def topology():
         currenttime = time.time()
         difftime = currenttime - startime
         while difftime < 500:
-            associated_to = nodes['sta1'].cmd('iw dev sta1-wlan0 link')
+            associated_to = nodes['sta7'].cmd('iw dev sta7-wlan0 link')
             associated_to = str(associated_to).splitlines()
             status = associated_to[0].split(' ')[0]
             if status == 'Not':
-                print('sta1 is not connected')
+                print('sta7 is not connected')
                 continue
 
-            clientdata = nodes['sta1'].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
+            clientdata = nodes['sta7'].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
             print(clientdata)
-            thpt = clientdata.splitlines()[-1].split(' ')[-2]
+            thpt = clientdata.splitlines()[-1].split()[-2]
 
             if thpt == 'to' or thpt == 'in':
                 print('Connection to iperf server lost')
                 continue
-            if clientdata.splitlines()[-1].split(' ')[-1] == 'Kbits/sec':
+            if clientdata.splitlines()[-1].split()[-1] == 'Kbits/sec':
                 thpt = str(float(thpt) / 1000)
-            mcs = nodes['sta1'].cmd('iw dev sta1-wlan0 station dump | grep MCS').splitlines()[-1].split(' ')[-1]
+            mcs = nodes['sta7'].cmd('iw dev sta7-wlan0 station dump | grep MCS').splitlines()[-1].split()[-1]
             currenttime = time.time()
             difftime = currenttime - startime
             difftimeval = "{:.2f}".format(difftime)
-            mac_ap = nodes['sta1'].cmd('iwconfig | grep Access').splitlines()[-1].split()[-1]
+            mac_ap = nodes['sta7'].cmd('iwconfig | grep Access').splitlines()[-1].split()[-1]
             if mac_ap == 'dBm':
+                print('No access point details found', nodes['sta7'].cmd('iwconfig | grep Access'))
                 continue
             ap_name = ap_mac.index(mac_ap) + 1
             nosta = 1
-            sinrval = nodes['sta1'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1]
-            for i in range(1, 7):
+            sinrval = nodes['sta7'].cmd('iwconfig | grep Link').splitlines()[-1].split()[1].split('=')[1]
+            for i in range(7):
+                if i == 6:
+                    continue
                 name = 'sta%s' % (i+1)
                 mac_ap = nodes[name].cmd('iwconfig | grep Access').splitlines()[-1].split()[-1]
                 if mac_ap == 'dBm':
+                    print('No access point details found for %s' % name, nodes[name].cmd('iwconfig | grep Access'))
                     continue
-                if ap_mac.index(mac_ap) == ap_name:
+                if (ap_mac.index(mac_ap)+1) == ap_name:
+                    print('%s is connected to %s' % (name, ap_name))
                     nosta += 1
             data_list = [thpt, ap_name, nosta, mcs, sinrval, difftimeval]
             print(data_list)
