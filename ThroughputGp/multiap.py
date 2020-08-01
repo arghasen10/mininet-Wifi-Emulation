@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import time, datetime, csv
-from mininet.node import Controller, OVSKernelSwitch, Host
+from mininet.node import OVSKernelSwitch, Host
 from mininet.log import setLogLevel, info
 from mn_wifi.net import Mininet_wifi
 from mn_wifi.node import OVSKernelAP
@@ -38,23 +38,23 @@ def plot_graph(filename):
     aps, throughput, distance, times, handovers = ([] for i in range(5))
     flag = 0
     for i in range(7):
-        ap, thpt, dist, time, handover = ([] for i in range(5))
+        ap, thpt, dist, time1, handover = ([] for i in range(5))
         with open(filename[i], 'r') as csvfile:
             rows = csv.reader(csvfile)
             for row in rows:
                 ap.append(row[1])
                 thpt.append(row[2])
                 dist.append(row[3])
-                time.append(row[4])
+                time1.append(row[4])
                 handover.append(row[-1])
         aps.append(ap[1:])
         thpt = [float(item) for item in thpt[1:]]
         dist = [float(item) for item in dist[1:]]
-        time = [float(item) for item in time[1:]]
+        time1 = [float(item) for item in time1[1:]]
         handover = handover[1:]
         throughput.append(thpt)
         distance.append(dist)
-        times.append(time)
+        times.append(time1)
         handovers.append(handover)
         plt.plot(times[i], throughput[i], label='sta%s' % (i + 1))
         plt.ylabel('Throughput(Mbps)')
@@ -80,14 +80,8 @@ def topology():
                        wmediumd_mode=interference,
                        ipBase='10.0.0.0/8')
 
-    info('*** Adding controller\n')
-    c0 = net.addController(name='c0',
-                           controller=Controller,
-                           protocol='tcp',
-                           port=6633)
-
     info('*** Add switches/APs\n')
-    s1 = net.addSwitch('s1', cls=OVSKernelSwitch)
+    s1 = net.addSwitch('s1', cls=OVSKernelSwitch, failMode='standalone')
     ap1 = net.addAccessPoint('ap1', cls=OVSKernelAP, ssid='ap-ssid',
                              channel='1', mode='n', failMode='standalone', position='20.0,80.0,0.0', range=42)
     ap2 = net.addAccessPoint('ap2', cls=OVSKernelAP, ssid='ap-ssid',
@@ -100,7 +94,7 @@ def topology():
     info('*** Add hosts/stations\n')
     nodes = {}
     for i in range(7):
-        nodes['sta%s' % (i + 1)] = net.addStation('sta%s' % (i + 1),
+        nodes['sta%s' % (i + 1)] = net.addStation('sta%s' % (i + 1), mac='00:00:00:00:00:0%s' % (i+2),
                                                   ip='10.0.0.%s/8' % (i + 2), min_x=25, max_x=75, min_y=25, max_y=75,
                                                   min_v=1, max_v=1.5)
     h1 = net.addHost('h1', cls=Host, ip='10.0.0.1', defaultRoute=None)
@@ -123,12 +117,9 @@ def topology():
     net.startMobility(time=0, AC='ssf')
     info('*** Starting network\n')
     net.build()
-    info('*** Starting controllers\n')
-    for controller in net.controllers:
-        controller.start()
 
     info('*** Starting switches/APs\n')
-    net.get('s1').start([c0])
+    net.get('s1').start([])
     net.get('ap1').start([])
     net.get('ap2').start([])
     net.get('ap3').start([])
@@ -136,13 +127,18 @@ def topology():
 
     info('*** Post configure nodes\n')
     time.sleep(5)
+    sta_MAC = []
+    for i in range(7):
+        sta_MAC.append(nodes['sta%s' % (i + 1)].params['mac'])
+    print(sta_MAC)
     val = input('Data Collection: ')
+
     if val == 'yes':
         filename = []
         info('*** Creating files for data storage\n')
         for i in range(7):
             file = createfile()
-            file -= '.csv'
+            file = file.replace(".csv", "")
             file += 'sta %s' % (i + 1) + '.csv'
             header_name = ["staName", "APName", "thpt", "dist", "time", "handover"]
             with open(file, 'w+') as csv_file:
