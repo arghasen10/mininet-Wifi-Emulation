@@ -134,18 +134,13 @@ def topology():
     val = input('Data Collection: ')
 
     if val == 'yes':
-        filename = []
-        info('*** Creating files for data storage\n')
-        for i in range(7):
-            file = createfile()
-            file = file.replace(".csv", "")
-            file += 'sta %s' % (i + 1) + '.csv'
-            header_name = ["staName", "APName", "thpt", "dist", "time", "handover"]
-            with open(file, 'w+') as csv_file:
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow(header_name)
+        info('*** Creating file for data storage\n')
+        file = createfile()
+        header_name = ["staName", "APName", "thpt", "dist", "time", "handover"]
+        with open(file, 'w+') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(header_name)
 
-            filename.append(file)
         info('Starting iperf server\n')
         h1.cmd('iperf -s -p 5566 -i 1 -t 600 &')
 
@@ -153,50 +148,58 @@ def topology():
         startime = time.time()
         currenttime = time.time()
         difftime = currenttime - startime
-        connected_ap = [1, 2, 3, 0, 1, 2, 0]
-
+        prev_connected_ap = 1
+        new_connected_ap = 1
+        distance_ap = 0
         while difftime < 500:
-            for i in range(7):
-                name = 'sta%s' % (i + 1)
-                associated_to = nodes[name].cmd('iw dev sta%s-wlan0 link' % (i + 1))
-                associated_to = str(associated_to).splitlines()
-                status = associated_to[0].split(' ')[0]
-                if status == 'Not':
-                    print('sta%s is not connected' % (i + 1))
-                    continue
+            name = 'sta1'
+            associated_to = nodes[name].cmd('iw dev sta1-wlan0 link')
+            associated_to = str(associated_to).splitlines()
+            status = associated_to[0].split()[0]
+            if status == 'Not':
+                print('sta1 is not connected')
+                continue
+            clientdata = nodes['sta1'].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 10 | ts | grep sec &').splitlines()
+            for res in clientdata:
+                print(res.split()[-2], res.split()[-1])
+            thpt = clientdata[-1].split()[-2]
 
-                clientdata = nodes[name].cmd('iperf -c 10.0.0.1 -p 5566 -i 1 -t 1')
-                print(clientdata)
-                thpt = clientdata.splitlines()[-1].split(' ')[-2]
+            if thpt == 'to' or thpt == 'in':
+                print('Connection to iperf server lost')
+                continue
+            if clientdata.splitlines()[-1].split()[-1] == 'Kbits/sec':
+                thpt = float(thpt) / 1000
+            handover = 0
+            res = ap1.cmd('hostapd_cli -i ap1-wlan1 all_sta | grep ..:').splitlines()
+            if nodes['sta1'].params['mac'] in res:
+                new_connected_ap = 1
+                distance_ap = nodes['sta1'].get_distance_to(ap1)
+            res = ap2.cmd('hostapd_cli -i ap2-wlan1 all_sta | grep ..:').splitlines()
+            if nodes['sta1'].params['mac'] in res:
+                new_connected_ap = 2
+                distance_ap = nodes['sta1'].get_distance_to(ap2)
+            res = ap3.cmd('hostapd_cli -i ap3-wlan1 all_sta | grep ..:').splitlines()
+            if nodes['sta1'].params['mac'] in res:
+                new_connected_ap = 3
+                distance_ap = nodes['sta1'].get_distance_to(ap3)
+            res = ap4.cmd('hostapd_cli -i ap4-wlan1 all_sta | grep ..:').splitlines()
+            if nodes['sta1'].params['mac'] in res:
+                new_connected_ap = 4
+                distance_ap = nodes['sta1'].get_distance_to(ap4)
+            if prev_connected_ap != new_connected_ap:
+                handover = 1
+                prev_connected_ap = new_connected_ap
+                print('Handover happened from ap%s to ap%s' % (prev_connected_ap, new_connected_ap))
 
-                if thpt == 'to' or thpt == 'in':
-                    print('Connection to iperf server lost')
-                    continue
-                if clientdata.splitlines()[-1].split(' ')[-1] == 'Kbits/sec':
-                    thpt = str(float(thpt) / 1000)
-                dist1 = nodes[name].get_distance_to(ap1)
-                dist2 = nodes[name].get_distance_to(ap2)
-                dist3 = nodes[name].get_distance_to(ap3)
-                dist4 = nodes[name].get_distance_to(ap4)
-                distance = [dist1, dist2, dist3, dist4]
-                short_index = distance.index(min(distance))
-                handover = 0
-                distance_ap = distance[connected_ap[i]]
-                if (connected_ap[i] != short_index) and (distance_ap > 42):
-                    connected_ap[i] = short_index
-                    distance_ap = distance[connected_ap[i]]
-                    print('Handover happened at sta%s' % (i + 1))
-                    handover = 1
-
-                ap_name = 'ap%s' % (connected_ap[i] + 1)
-                currenttime = time.time()
-                difftime = currenttime - startime
-                difftimeval = "{:.2f}".format(difftime)
-                data_list = [name, ap_name, thpt, distance_ap, difftimeval, handover]
-                print(data_list)
-                with open(filename[i], 'a') as csv_file:
-                    csv_writer = csv.writer(csv_file)
-                    csv_writer.writerow(data_list)
+            ap_name = 'ap%s' % new_connected_ap
+            currenttime = time.time()
+            difftime = currenttime - startime
+            difftimeval = "{:.2f}".format(difftime)
+            data_list = [name, ap_name, thpt, distance_ap, difftimeval, handover]
+            print(data_list)
+            with open(file, 'a') as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(data_list)
         # TODO
         # info('*** Plotting Graphs\n')
         # plot_graph(filename)
